@@ -9,9 +9,20 @@ const headers = {
 
 const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
 const getTitle = (property) => property?.title?.[0]?.plain_text || "";
-const getUrl = (property) => property?.url || "";
 const getSelect = (property) => property?.select?.name || null;
 const getNumber = (property) => property?.number || 0;
+const getUrl = (property) => {
+    if (property?.url) {
+        return property.url;
+    }
+    if (property?.files?.[0]?.file?.url) {
+        return property.files[0].file.url;
+    }
+     if (property?.files?.[0]?.external?.url) {
+        return property.files[0].external.url;
+    }
+    return "";
+};
 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -50,7 +61,6 @@ exports.handler = async function (event) {
           hasShadow: true
         }
       },
-      // LECTURE DES DONNÉES SEO
       seo: { 
         title: getPlainText(profileProps.seo_title), 
         description: getPlainText(profileProps.seo_description), 
@@ -81,7 +91,6 @@ exports.handler = async function (event) {
     };
 
   } catch (error) {
-    console.error("Get Data Error:", error);
     return {
       statusCode: 500,
       headers,
