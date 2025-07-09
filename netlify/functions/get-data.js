@@ -1,5 +1,4 @@
 const { Client } = require("@notionhq/client");
-
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
 const headers = {
@@ -8,7 +7,9 @@ const headers = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// Fonctions pour extraire les données en toute sécurité
 const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
+const getTitle = (property) => property?.title?.[0]?.plain_text || "";
 const getUrl = (property) => property?.url || "";
 const getSelect = (property) => property?.select?.name || null;
 const getNumber = (property) => property?.number || 0;
@@ -46,21 +47,27 @@ exports.handler = async function (event) {
           hasShadow: true
         }
       },
-      seo: { title: getPlainText(profileProps.seo_title), description: getPlainText(profileProps.seo_description), faviconUrl: getUrl(profileProps.seo_faviconUrl) },
-      socials: socialsDb.results.map(item => ({
-        pageId: item.id,
-        id: getNumber(item.properties.id),
-        network: getPlainText(item.properties.Network).toLowerCase() || 'website',
-        url: getUrl(item.properties.URL),
-      })).sort((a, b) => getNumber(a.properties?.Order) - getNumber(b.properties?.Order)),
-      links: linksDb.results.map(item => ({
-        pageId: item.id,
-        id: getNumber(item.properties.id),
-        type: getSelect(item.properties.Type),
-        title: getPlainText(item.properties.Title),
-        url: getUrl(item.properties.URL),
-        thumbnailUrl: getUrl(item.properties['Thumbnail URL']),
-      })).sort((a, b) => getNumber(a.properties?.Order) - getNumber(b.properties?.Order)),
+      seo: { title: '', description: '', faviconUrl: '' }, // SEO reste géré localement
+      socials: socialsDb.results
+        .map(item => ({
+            pageId: item.id,
+            id: getNumber(item.properties.id),
+            network: getTitle(item.properties.Network),
+            url: getUrl(item.properties.URL),
+            order: getNumber(item.properties.Order)
+        }))
+        .sort((a, b) => a.order - b.order),
+      links: linksDb.results
+        .map(item => ({
+            pageId: item.id,
+            id: getNumber(item.properties.id),
+            type: getSelect(item.properties.Type),
+            title: getTitle(item.properties.Title),
+            url: getUrl(item.properties.URL),
+            thumbnailUrl: getUrl(item.properties['Thumbnail URL']),
+            order: getNumber(item.properties.Order)
+        }))
+        .sort((a, b) => a.order - b.order),
     };
 
     return {
@@ -69,7 +76,7 @@ exports.handler = async function (event) {
       body: JSON.stringify(formattedData),
     };
   } catch (error) {
-    console.error("Get Data Error:", error.body);
+    console.error("Get Data Error:", error);
     return {
       statusCode: 500,
       headers,

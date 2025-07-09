@@ -7,10 +7,13 @@ const headers = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// --- Fonctions de mise à jour pour Notion ---
-
+// Met à jour la page principale (Profil, Apparence)
 const updateProfilePage = (pageId, data) => {
-    const { profile, appearance, seo } = data;
+    const { profile, appearance } = data;
+    const backgroundValue = Array.isArray(appearance.background.value) 
+        ? appearance.background.value.join(',') 
+        : appearance.background.value;
+
     return notion.pages.update({
         page_id: pageId,
         properties: {
@@ -19,46 +22,58 @@ const updateProfilePage = (pageId, data) => {
             'font_family': { rich_text: [{ text: { content: appearance.fontFamily || "" } }] },
             'text_color': { rich_text: [{ text: { content: appearance.textColor || "" } }] },
             'background_type': { select: { name: appearance.background.type || "solid" } },
-            'background_value': { rich_text: [{ text: { content: (Array.isArray(appearance.background.value) ? appearance.background.value.join(',') : appearance.background.value) } }] },
+            'background_value': { rich_text: [{ text: { content: backgroundValue } }] },
             'button_bg_color': { rich_text: [{ text: { content: appearance.button.backgroundColor || "" } }] },
             'button_text_color': { rich_text: [{ text: { content: appearance.button.textColor || "" } }] },
-            'seo_title': { rich_text: [{ text: { content: seo.title || "" } }] },
-            'seo_description': { rich_text: [{ text: { content: seo.description || "" } }] },
-            'seo_faviconUrl': { url: seo.faviconUrl || null },
         }
     });
 };
 
-const createOrUpdatePage = (dbId, item, existingPages, isSocial = false) => {
-    const pageId = item.pageId;
-    const properties = {
-        'id': { number: item.id },
-        'Order': { number: item.order || 0 },
-        // ... (propriétés communes)
-    };
+// Gère la synchronisation des listes (Links, Socials)
+const syncItems = async (dbId, itemsFromAdmin, existingPages, isSocial = false) => {
+    const operations = [];
+    const adminItemIds = new Set(itemsFromAdmin.map(i => i.id));
 
-    if (isSocial) {
-        properties.Network = { title: [{ text: { content: item.network || "website" } }] };
-        properties.URL = { url: item.url || null };
-    } else { // Link or Header
-        properties.Title = { title: [{ text: { content: item.title || "" } }] };
-        properties.Type = { select: { name: item.type || "link" } };
-        properties.URL = { url: item.url || null };
-        properties['Thumbnail URL'] = { url: item.thumbnailUrl || null };
+    // Mettre à jour ou créer
+    for (const [index, item] of itemsFromAdmin.entries()) {
+        const properties = {
+            'id': { number: item.id },
+            'Order': { number: index }
+        };
+
+        if (isSocial) {
+            properties.Network = { title: [{ text: { content: item.network || "website" } }] };
+            properties.URL = { url: item.url || null };
+        } else { // Lien ou Titre
+            properties.Title = { title: [{ text: { content: item.title || "" } }] };
+            properties.Type = { select: { name: item.type || "link" } };
+            properties.URL = { url: item.url || null };
+            properties['Thumbnail URL'] = { url: item.thumbnailUrl || null };
+        }
+
+        const existingPage = existingPages.find(p => p.properties.id.number === item.id);
+        
+        if (existingPage) {
+            operations.push(notion.pages.update({ page_id: existingPage.id, properties }));
+        } else {
+            operations.push(notion.pages.create({ parent: { database_id: dbId }, properties }));
+        }
     }
-    
-    // Si la page existe, on la met à jour. Sinon, on la crée.
-    if (pageId && existingPages.find(p => p.id === pageId)) {
-        return notion.pages.update({ page_id: pageId, properties });
-    } else {
-        return notion.pages.create({ parent: { database_id: dbId }, properties });
+
+    // Supprimer
+    const pagesToDelete = existingPages.filter(p => !adminItemIds.has(p.properties.id.number));
+    for (const page of pagesToDelete) {
+        operations.push(notion.pages.update({ page_id: page.id, archived: true }));
     }
+
+    return Promise.all(operations);
 };
 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' };
   }
+  
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: 'Method Not Allowed' };
   }
@@ -72,34 +87,16 @@ exports.handler = async function (event) {
     const linksDbId = process.env.NOTION_LINKS_DB_ID;
     const socialsDbId = process.env.NOTION_SOCIALS_DB_ID;
 
-    // 1. Mettre à jour le profil
-    if (data.profilePageId) {
-      await updateProfilePage(data.profilePageId, data);
-    }
-    
-    // 2. Gérer les liens et les icônes sociales (Mise à jour, Création, Suppression)
     const [existingLinks, existingSocials] = await Promise.all([
         notion.databases.query({ database_id: linksDbId }),
         notion.databases.query({ database_id: socialsDbId })
     ]);
 
-    // Items à mettre à jour ou à créer
-    const linkPromises = data.links.map((link, index) => createOrUpdatePage(linksDbId, {...link, order: index}, existingLinks.results));
-    const socialPromises = data.socials.map((social, index) => createOrUpdatePage(socialsDbId, {...social, order: index}, existingSocials.results, true));
-    
-    // Items à supprimer
-    const linkIdsToKeep = data.links.map(l => l.pageId);
-    const linksToDelete = existingLinks.results.filter(p => !linkIdsToKeep.includes(p.id));
-    const socialIdsToKeep = data.socials.map(s => s.pageId);
-    const socialsToDelete = existingSocials.results.filter(p => !socialIdsToKeep.includes(p.id));
-    
-    const deletionPromises = [
-        ...linksToDelete.map(p => notion.pages.update({ page_id: p.id, archived: true })),
-        ...socialsToDelete.map(p => notion.pages.update({ page_id: p.id, archived: true }))
-    ];
-
-    // Exécuter toutes les promesses
-    await Promise.all([...linkPromises, ...socialPromises, ...deletionPromises]);
+    await Promise.all([
+        updateProfilePage(data.profilePageId, data),
+        syncItems(linksDbId, data.links, existingLinks.results, false),
+        syncItems(socialsDbId, data.socials, existingSocials.results, true)
+    ]);
 
     return {
       statusCode: 200,
