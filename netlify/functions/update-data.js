@@ -9,7 +9,7 @@ const headers = {
 
 const updateProfilePage = (pageId, data) => {
     if (!pageId) throw new Error("Profile pageId is missing.");
-    const { profile, appearance } = data;
+    const { profile, appearance, seo } = data;
     const backgroundValue = Array.isArray(appearance.background.value) 
         ? appearance.background.value.join(',') 
         : appearance.background.value;
@@ -24,6 +24,10 @@ const updateProfilePage = (pageId, data) => {
             'background_value': { rich_text: [{ text: { content: backgroundValue } }] },
             'button_bg_color': { rich_text: [{ text: { content: appearance.button.backgroundColor || "" } }] },
             'button_text_color': { rich_text: [{ text: { content: appearance.button.textColor || "" } }] },
+            // ÉCRITURE DES DONNÉES SEO
+            'seo_title': { rich_text: [{ text: { content: seo.title || "" } }] },
+            'seo_description': { rich_text: [{ text: { content: seo.description || "" } }] },
+            'seo_faviconUrl': { url: seo.faviconUrl || null },
         }
     });
 };
@@ -38,7 +42,6 @@ const syncItems = async (dbId, itemsFromAdmin, existingPages, isSocial = false) 
             properties.URL = { url: item.url || null };
         } else {
             properties.Title = { title: [{ text: { content: item.title || "" } }] };
-            // CORRECTION : Passage de "Type" à "type"
             properties.type = { select: { name: item.type || "link" } };
             properties.URL = { url: item.url || null };
             properties['Thumbnail URL'] = { url: item.thumbnailUrl || null };

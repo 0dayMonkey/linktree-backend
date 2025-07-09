@@ -50,7 +50,12 @@ exports.handler = async function (event) {
           hasShadow: true
         }
       },
-      seo: { title: '', description: '', faviconUrl: '' },
+      // LECTURE DES DONNÉES SEO
+      seo: { 
+        title: getPlainText(profileProps.seo_title), 
+        description: getPlainText(profileProps.seo_description), 
+        faviconUrl: getUrl(profileProps.seo_faviconUrl) 
+      },
       socials: socialsDb.results.map(item => ({
         pageId: item.id,
         id: getNumber(item.properties.id),
@@ -61,7 +66,6 @@ exports.handler = async function (event) {
       links: linksDb.results.map(item => ({
         pageId: item.id,
         id: getNumber(item.properties.id),
-        // CORRECTION : Passage de "Type" à "type"
         type: getSelect(item.properties.type),
         title: getTitle(item.properties.Title),
         url: getUrl(item.properties.URL),
