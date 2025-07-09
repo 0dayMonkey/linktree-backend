@@ -1,87 +1,73 @@
 const { Client } = require("@notionhq/client");
 
-// Initialiser le client Notion avec le token d'API
-const notion = new Client({
-  auth: process.env.NOTION_TOKEN,
-});
+const notion = new Client({ auth: process.env.NOTION_TOKEN });
+
+// Fonction pour extraire le texte d'une propriété Notion
+const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
+const getUrl = (property) => property?.url || "";
+const getSelect = (property) => property?.select?.name || null;
+const getNumber = (property) => property?.number || 0;
 
 exports.handler = async function (event, context) {
   try {
-    // 1. Récupérer les IDs des bases de données depuis les variables d'environnement
-    const profileDbId = process.env.NOTION_PROFILE_DB_ID;
-    const socialsDbId = process.env.NOTION_SOCIALS_DB_ID;
-    const linksDbId = process.env.NOTION_LINKS_DB_ID;
-
-    // 2. Exécuter les requêtes vers Notion en parallèle
-    const [profileResponse, socialsResponse, linksResponse] = await Promise.all([
-      notion.databases.query({ database_id: profileDbId }),
-      notion.databases.query({ database_id: socialsDbId }),
-      notion.databases.query({ database_id: linksDbId }),
+    const [profileDb, socialsDb, linksDb] = await Promise.all([
+      notion.databases.query({ database_id: process.env.NOTION_PROFILE_DB_ID }),
+      notion.databases.query({ database_id: process.env.NOTION_SOCIALS_DB_ID }),
+      notion.databases.query({ database_id: process.env.NOTION_LINKS_DB_ID }),
     ]);
 
-    // 3. Formater les données de "Profile & Appearance"
-    const profileData = profileResponse.results[0]?.properties || {};
-    const formattedProfile = {
+    // 1. Profil & Apparence
+    const profileProps = profileDb.results[0]?.properties || {};
+    const profilePageId = profileDb.results[0]?.id; // On récupère l'ID de la page
+    const formattedData = {
+      profilePageId: profilePageId, // On l'ajoute à la réponse
       profile: {
-        title: profileData.profile_title?.rich_text[0]?.plain_text || "",
-        pictureUrl: profileData.picture_url?.url || "",
+        title: getPlainText(profileProps.profile_title),
+        pictureUrl: getUrl(profileProps.picture_url),
       },
       appearance: {
-        textColor: profileData.text_color?.rich_text[0]?.plain_text || "#000000",
+        fontFamily: getPlainText(profileProps.font_family) || "'Inter', sans-serif", // Police par défaut
+        textColor: getPlainText(profileProps.text_color) || "#000000",
         background: {
-          type: profileData.background_type?.select?.name || "solid",
-          value: profileData.background_value?.rich_text[0]?.plain_text || "#FFFFFF",
+          type: getSelect(profileProps.background_type) || "solid",
+          value: getPlainText(profileProps.background_value) || "#FFFFFF",
         },
         button: {
-          backgroundColor: profileData.button_bg_color?.rich_text[0]?.plain_text || "#FFFFFF",
-          textColor: profileData.button_text_color?.rich_text[0]?.plain_text || "#000000",
-          // Ces valeurs sont fixes pour l'instant, comme dans votre code original
-          borderRadius: '8px', 
+          backgroundColor: getPlainText(profileProps.button_bg_color) || "#FFFFFF",
+          textColor: getPlainText(profileProps.button_text_color) || "#000000",
+          borderRadius: '8px',
           hasShadow: true
         }
-      }
-    };
-    
-    // 4. Formater les données "Socials"
-    const formattedSocials = socialsResponse.results
-      .map(item => ({
-        network: item.properties.Network?.title[0]?.plain_text.toLowerCase() || 'website',
-        url: item.properties.URL?.url || '',
-        order: item.properties.Order?.number || 0
-      }))
-      .sort((a, b) => a.order - b.order);
-
-
-    // 5. Formater les données "Links"
-    const formattedLinks = linksResponse.results
-      .map((item, index) => ({
-        id: index, // L'ID peut simplement être l'index pour la compatibilité
-        type: item.properties.Type?.select?.name || 'link',
-        title: item.properties.Title?.title[0]?.plain_text || '',
-        url: item.properties.URL?.url || '',
-        thumbnailUrl: item.properties['Thumbnail URL']?.url || '',
-        order: item.properties.Order?.number || 0
-      }))
-      .sort((a, b) => a.order - b.order);
-
-    // 6. Combiner toutes les données dans un seul objet
-    const finalData = {
-      ...formattedProfile,
-      socials: formattedSocials,
-      links: formattedLinks,
-      // Les données SEO peuvent être ajoutées de la même manière si besoin
-      seo: { title: "Mon Linktree", description: "", faviconUrl: "" }
+      },
+       seo: { title: "", description: "", faviconUrl: "" } // SEO reste géré localement pour l'instant
     };
 
-    // 7. Renvoyer la réponse avec succès
+    // 2. Icônes Sociales
+    formattedData.socials = socialsDb.results.map(item => ({
+      pageId: item.id, // ID de la page
+      id: getNumber(item.properties.id) || Date.now(),
+      network: getPlainText(item.properties.Network).toLowerCase() || 'website',
+      url: getUrl(item.properties.URL),
+      order: getNumber(item.properties.Order)
+    })).sort((a, b) => a.order - b.order);
+
+    // 3. Liens & Titres
+    formattedData.links = linksDb.results.map(item => ({
+      pageId: item.id, // ID de la page
+      id: getNumber(item.properties.id) || Date.now(),
+      type: getSelect(item.properties.Type),
+      title: getPlainText(item.properties.Title),
+      url: getUrl(item.properties.URL),
+      thumbnailUrl: getUrl(item.properties['Thumbnail URL']),
+      order: getNumber(item.properties.Order)
+    })).sort((a, b) => a.order - b.order);
+
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*", // Autorise les requêtes depuis n'importe quelle origine
-      },
-      body: JSON.stringify(finalData),
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify(formattedData),
     };
+
   } catch (error) {
     console.error(error);
     return {
