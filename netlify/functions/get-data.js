@@ -11,6 +11,7 @@ const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
 const getTitle = (property) => property?.title?.[0]?.plain_text || "";
 const getSelect = (property) => property?.select?.name || null;
 const getNumber = (property) => property?.number || 0;
+
 const getUrl = (property) => {
     if (property?.url) {
         return property.url;
@@ -18,11 +19,12 @@ const getUrl = (property) => {
     if (property?.files?.[0]?.file?.url) {
         return property.files[0].file.url;
     }
-     if (property?.files?.[0]?.external?.url) {
+    if (property?.files?.[0]?.external?.url) {
         return property.files[0].external.url;
     }
     return "";
 };
+
 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
