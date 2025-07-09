@@ -2,29 +2,16 @@ const { Client } = require("@notionhq/client");
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
 const headers = {
-  'Access-Control-Allow-Origin': 'https://harib-naim.fr',
+  'Access-Control-Allow-Origin': '*', 
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
 const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
 const getTitle = (property) => property?.title?.[0]?.plain_text || "";
+const getUrl = (property) => property?.url || "";
 const getSelect = (property) => property?.select?.name || null;
 const getNumber = (property) => property?.number || 0;
-
-const getUrl = (property) => {
-    if (property?.url) {
-        return property.url;
-    }
-    if (property?.files?.[0]?.file?.url) {
-        return property.files[0].file.url;
-    }
-    if (property?.files?.[0]?.external?.url) {
-        return property.files[0].external.url;
-    }
-    return "";
-};
-
 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -39,7 +26,7 @@ exports.handler = async function (event) {
     ]);
 
     if (profileDb.results.length === 0) {
-      throw new Error("The 'Profile & Appearance' database in Notion is empty. Please add one row.");
+      throw new Error("La base de données 'Profile & Appearance' dans Notion est vide.");
     }
     const profileProps = profileDb.results[0].properties;
     
@@ -47,7 +34,7 @@ exports.handler = async function (event) {
       profilePageId: profileDb.results[0].id,
       profile: {
         title: getPlainText(profileProps.profile_title),
-        pictureUrl: getUrl(profileProps.picture_url),
+        pictureUrl: getPlainText(profileProps.picture_url),
       },
       appearance: {
         fontFamily: getPlainText(profileProps.font_family) || "'Inter', sans-serif",
@@ -66,7 +53,7 @@ exports.handler = async function (event) {
       seo: { 
         title: getPlainText(profileProps.seo_title), 
         description: getPlainText(profileProps.seo_description), 
-        faviconUrl: getUrl(profileProps.seo_faviconUrl) 
+        faviconUrl: getPlainText(profileProps.seo_faviconUrl) 
       },
       socials: socialsDb.results.map(item => ({
         pageId: item.id,
@@ -81,7 +68,7 @@ exports.handler = async function (event) {
         type: getSelect(item.properties.type),
         title: getTitle(item.properties.Title),
         url: getUrl(item.properties.URL),
-        thumbnailUrl: getUrl(item.properties['Thumbnail URL']),
+        thumbnailUrl: getPlainText(item.properties['Thumbnail URL']),
         order: getNumber(item.properties.Order)
       })).sort((a, b) => a.order - b.order),
     };
@@ -96,7 +83,7 @@ exports.handler = async function (event) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: error.message || "Failed to fetch data from Notion." }),
+      body: JSON.stringify({ error: error.message || "Impossible de récupérer les données depuis Notion." }),
     };
   }
 };
