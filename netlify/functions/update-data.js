@@ -35,6 +35,7 @@ const updateProfilePage = (pageId, data) => {
         page_id: pageId,
         properties: {
             'profile_title': { rich_text: toRichText(profile.title) },
+            'profile_description': { rich_text: toRichText(profile.description) },
             'picture_url': { rich_text: toRichText(profile.pictureUrl) },
             'font_family': { rich_text: toRichText(appearance.fontFamily) },
             'text_color': { rich_text: toRichText(appearance.textColor) },

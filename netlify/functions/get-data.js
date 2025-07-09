@@ -39,6 +39,7 @@ exports.handler = async function (event) {
       profilePageId: profileDb.results[0].id,
       profile: {
         title: getPlainText(profileProps.profile_title),
+        description: getPlainText(profileProps.profile_description),
         pictureUrl: getPlainText(profileProps.picture_url),
       },
       appearance: {
