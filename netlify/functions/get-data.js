@@ -7,7 +7,6 @@ const headers = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// Fonctions pour extraire les données en toute sécurité
 const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
 const getTitle = (property) => property?.title?.[0]?.plain_text || "";
 const getUrl = (property) => property?.url || "";
@@ -26,9 +25,13 @@ exports.handler = async function (event) {
       notion.databases.query({ database_id: process.env.NOTION_LINKS_DB_ID }),
     ]);
 
-    const profileProps = profileDb.results[0]?.properties || {};
+    if (profileDb.results.length === 0) {
+      throw new Error("The 'Profile & Appearance' database in Notion is empty. Please add one row.");
+    }
+    const profileProps = profileDb.results[0].properties;
+    
     const formattedData = {
-      profilePageId: profileDb.results[0]?.id,
+      profilePageId: profileDb.results[0].id,
       profile: {
         title: getPlainText(profileProps.profile_title),
         pictureUrl: getUrl(profileProps.picture_url),
@@ -47,27 +50,24 @@ exports.handler = async function (event) {
           hasShadow: true
         }
       },
-      seo: { title: '', description: '', faviconUrl: '' }, // SEO reste géré localement
-      socials: socialsDb.results
-        .map(item => ({
-            pageId: item.id,
-            id: getNumber(item.properties.id),
-            network: getTitle(item.properties.Network),
-            url: getUrl(item.properties.URL),
-            order: getNumber(item.properties.Order)
-        }))
-        .sort((a, b) => a.order - b.order),
-      links: linksDb.results
-        .map(item => ({
-            pageId: item.id,
-            id: getNumber(item.properties.id),
-            type: getSelect(item.properties.Type),
-            title: getTitle(item.properties.Title),
-            url: getUrl(item.properties.URL),
-            thumbnailUrl: getUrl(item.properties['Thumbnail URL']),
-            order: getNumber(item.properties.Order)
-        }))
-        .sort((a, b) => a.order - b.order),
+      seo: { title: '', description: '', faviconUrl: '' },
+      socials: socialsDb.results.map(item => ({
+        pageId: item.id,
+        id: getNumber(item.properties.id),
+        network: getTitle(item.properties.Network),
+        url: getUrl(item.properties.URL),
+        order: getNumber(item.properties.Order)
+      })).sort((a, b) => a.order - b.order),
+      links: linksDb.results.map(item => ({
+        pageId: item.id,
+        id: getNumber(item.properties.id),
+        // CORRECTION : Passage de "Type" à "type"
+        type: getSelect(item.properties.type),
+        title: getTitle(item.properties.Title),
+        url: getUrl(item.properties.URL),
+        thumbnailUrl: getUrl(item.properties['Thumbnail URL']),
+        order: getNumber(item.properties.Order)
+      })).sort((a, b) => a.order - b.order),
     };
 
     return {
@@ -75,12 +75,13 @@ exports.handler = async function (event) {
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(formattedData),
     };
+
   } catch (error) {
     console.error("Get Data Error:", error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: "Failed to fetch data from Notion." }),
+      body: JSON.stringify({ error: error.message || "Failed to fetch data from Notion." }),
     };
   }
 };
