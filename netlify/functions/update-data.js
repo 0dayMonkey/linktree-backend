@@ -7,13 +7,15 @@ const headers = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// --- CORRECTION CLÉ : Découpage du texte long ---
 const toRichText = (content) => {
     if (!content) return [];
     const maxLength = 2000;
-    if (content.length > maxLength) {
-        return [{ text: { content: content.substring(0, maxLength) } }];
+    const chunks = [];
+    for (let i = 0; i < content.length; i += maxLength) {
+        chunks.push({ text: { content: content.substring(i, i + maxLength) } });
     }
-    return [{ text: { content: content } }];
+    return chunks;
 };
 
 const toTitle = (content) => [{ text: { content: content || "" } }];
@@ -21,10 +23,14 @@ const toTitle = (content) => [{ text: { content: content || "" } }];
 const updateProfilePage = (pageId, data) => {
     if (!pageId) throw new Error("L'ID de la page de profil est manquant.");
     const { profile, appearance, seo } = data;
-    const backgroundValue = Array.isArray(appearance.background.value) 
-        ? appearance.background.value.join(',') 
-        : appearance.background.value;
-
+    const backgroundValue = appearance.background.type === 'gradient' 
+        ? appearance.background.value 
+        : (appearance.background.value || "").startsWith('data:image') 
+            ? appearance.background.value 
+            : Array.isArray(appearance.background.value) 
+                ? appearance.background.value.join(',') 
+                : appearance.background.value;
+    
     return notion.pages.update({
         page_id: pageId,
         properties: {

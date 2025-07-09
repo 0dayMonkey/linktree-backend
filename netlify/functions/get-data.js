@@ -7,7 +7,12 @@ const headers = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
+// --- CORRECTION CLÉ : Reconstitution du texte long ---
+const getPlainText = (property) => {
+    if (!property || !property.rich_text) return "";
+    return property.rich_text.map(t => t.plain_text).join('');
+};
+
 const getTitle = (property) => property?.title?.[0]?.plain_text || "";
 const getUrl = (property) => property?.url || "";
 const getSelect = (property) => property?.select?.name || null;
