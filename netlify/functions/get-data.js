@@ -2,27 +2,20 @@ const { Client } = require("@notionhq/client");
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-// --- En-têtes CORS pour autoriser votre frontend ---
 const headers = {
   'Access-Control-Allow-Origin': 'https://harib-naim.fr',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// Fonctions utilitaires
 const getPlainText = (property) => property?.rich_text?.[0]?.plain_text || "";
 const getUrl = (property) => property?.url || "";
 const getSelect = (property) => property?.select?.name || null;
 const getNumber = (property) => property?.number || 0;
 
-exports.handler = async function (event, context) {
-  // Gère la requête "preflight" OPTIONS
+exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers,
-      body: '',
-    };
+    return { statusCode: 204, headers, body: '' };
   }
 
   try {
@@ -53,23 +46,21 @@ exports.handler = async function (event, context) {
           hasShadow: true
         }
       },
-      seo: { title: "", description: "", faviconUrl: "" },
+      seo: { title: getPlainText(profileProps.seo_title), description: getPlainText(profileProps.seo_description), faviconUrl: getUrl(profileProps.seo_faviconUrl) },
       socials: socialsDb.results.map(item => ({
         pageId: item.id,
-        id: getNumber(item.properties.id) || Date.now(),
+        id: getNumber(item.properties.id),
         network: getPlainText(item.properties.Network).toLowerCase() || 'website',
         url: getUrl(item.properties.URL),
-        order: getNumber(item.properties.Order)
-      })).sort((a, b) => a.order - b.order),
+      })).sort((a, b) => getNumber(a.properties?.Order) - getNumber(b.properties?.Order)),
       links: linksDb.results.map(item => ({
         pageId: item.id,
-        id: getNumber(item.properties.id) || Date.now(),
+        id: getNumber(item.properties.id),
         type: getSelect(item.properties.Type),
         title: getPlainText(item.properties.Title),
         url: getUrl(item.properties.URL),
         thumbnailUrl: getUrl(item.properties['Thumbnail URL']),
-        order: getNumber(item.properties.Order)
-      })).sort((a, b) => a.order - b.order),
+      })).sort((a, b) => getNumber(a.properties?.Order) - getNumber(b.properties?.Order)),
     };
 
     return {
@@ -77,12 +68,11 @@ exports.handler = async function (event, context) {
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(formattedData),
     };
-
   } catch (error) {
-    console.error(error);
+    console.error("Get Data Error:", error.body);
     return {
       statusCode: 500,
-      headers: { ...headers, "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ error: "Failed to fetch data from Notion." }),
     };
   }
