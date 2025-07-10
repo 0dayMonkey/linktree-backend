@@ -1,15 +1,26 @@
 const { Client } = require("@notionhq/client");
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-const headers = {
-  'Access-Control-Allow-Origin': '*', 
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+// NOUVEAU : Liste des domaines autorisés à faire des requêtes
+const ALLOWED_ORIGINS = [
+  'https://harib-naim.fr',
+  'null', // Pour les tests en local (file://)
+];
+
+const getHeaders = (event) => {
+  const origin = event.headers.origin;
+  const headers = {};
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type';
+  }
+  return headers;
 };
+
 
 const toRichText = (content) => {
     if (content === null || content === undefined) return [];
-    // Notion a une limite de 2000 caractères par bloc de texte riche.
     const strContent = String(content);
     const maxLength = 2000;
     const chunks = [];
@@ -30,7 +41,7 @@ const updateProfilePage = (pageId, data) => {
         properties: {
             'profile_title': { rich_text: toRichText(profile.title) },
             'profile_description': { rich_text: toRichText(profile.description) },
-            'picture_url': { rich_text: toRichText(profile.pictureUrl) }, // Stocke simplement l'URL
+            'picture_url': { rich_text: toRichText(profile.pictureUrl) },
             'font_family': { rich_text: toRichText(appearance.fontFamily) },
             'text_color': { rich_text: toRichText(appearance.textColor) },
             'profile_title_color': { rich_text: toRichText(appearance.titleColor) },
@@ -49,7 +60,7 @@ const updateProfilePage = (pageId, data) => {
             'header_border_color': { rich_text: toRichText(appearance.header.borderColor) },
             'seo_title': { rich_text: toRichText(seo.title) },
             'seo_description': { rich_text: toRichText(seo.description) },
-            'seo_faviconUrl': { rich_text: toRichText(seo.faviconUrl) }, // Stocke simplement l'URL
+            'seo_faviconUrl': { rich_text: toRichText(seo.faviconUrl) },
             'picture_layout': { select: { name: appearance.pictureLayout || "circle" } },
         }
     });
@@ -69,7 +80,7 @@ const syncItems = async (dbId, items, existingPages, isSocial = false) => {
             properties.Title = { title: toTitle(item.title) };
             properties.type = { select: { name: item.type || "link" } };
             properties.URL = { url: item.url || null };
-            properties['Thumbnail URL'] = { rich_text: toRichText(item.thumbnailUrl) }; // Stocke simplement l'URL
+            properties['Thumbnail URL'] = { rich_text: toRichText(item.thumbnailUrl) };
         }
 
         const existingPage = existingPages.find(p => p.properties.id.number === item.id);
@@ -89,8 +100,10 @@ const syncItems = async (dbId, items, existingPages, isSocial = false) => {
 };
 
 exports.handler = async function (event) {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: 'Méthode non autorisée' };
+  const headers = getHeaders(event);
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers, body: '' };
+  }
 
   try {
     if (!event.body) throw new Error("Le corps de la requête est vide.");
@@ -115,6 +128,7 @@ exports.handler = async function (event) {
       body: JSON.stringify({ message: 'Mise à jour réussie' })
     };
   } catch (error) {
+    console.error("[update-data] Function Error:", error);
     return {
       statusCode: error.status || 500,
       headers,

@@ -1,13 +1,25 @@
 const { Client } = require("@notionhq/client");
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-const headers = {
-  'Access-Control-Allow-Origin': '*', 
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0',
+// NOUVEAU : Liste des domaines autorisés à faire des requêtes
+const ALLOWED_ORIGINS = [
+  'https://harib-naim.fr',
+  'null', // Pour les tests en local (file://)
+];
+
+const getHeaders = (event) => {
+  const origin = event.headers.origin;
+  const headers = {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  };
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type';
+  }
+  return headers;
 };
 
 const getPlainText = (property) => {
@@ -21,6 +33,7 @@ const getSelect = (property) => property?.select?.name || null;
 const getNumber = (property) => property?.number || 0;
 
 exports.handler = async function (event) {
+  const headers = getHeaders(event);
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' };
   }
@@ -99,6 +112,7 @@ exports.handler = async function (event) {
     };
 
   } catch (error) {
+    console.error("[get-data] Function Error:", error);
     return {
       statusCode: 500,
       headers,
