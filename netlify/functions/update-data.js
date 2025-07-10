@@ -30,8 +30,14 @@ const toRichText = (content) => {
 
 const toTitle = (content) => [{ text: { content: content || "" } }];
 
-// CORRECTION : La fonction manquante est maintenant définie ici.
 const getNumber = (property) => property?.number || 0;
+
+// CORRECTION : La fonction manquante est maintenant définie ici.
+const getPlainText = (property) => {
+    if (!property || !property.rich_text) return "";
+    return property.rich_text.map(t => t.plain_text).join('');
+};
+
 
 const updateProfilePage = (pageId, data) => {
     if (!pageId) throw new Error("L'ID de la page de profil est manquant.");
@@ -63,7 +69,6 @@ const updateProfilePage = (pageId, data) => {
             'seo_description': { rich_text: toRichText(seo.description) },
             'seo_faviconUrl': { rich_text: toRichText(seo.faviconUrl) },
             'picture_layout': { select: { name: appearance.pictureLayout || "circle" } },
-            // NOUVEAU : Sauvegarde de l'ordre des sections
             'section_order': { rich_text: toRichText(JSON.stringify(sectionOrder || ['socials', 'songs', 'links'])) },
         }
     });
