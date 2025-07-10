@@ -44,21 +44,17 @@ const updateProfilePage = (pageId, data) => {
             'background_type': { select: { name: appearance.background.type || "solid" } },
             'background_value': { rich_text: toRichText(backgroundValue) },
             
-            // Propriétés pour les liens
             'link_bg_color': { rich_text: toRichText(appearance.link.backgroundColor) },
             'link_text_color': { rich_text: toRichText(appearance.link.textColor) },
             'link_border_radius': { rich_text: toRichText(appearance.link.borderRadius) },
             'link_border_width': { rich_text: toRichText(appearance.link.borderWidth) },
             'link_border_color': { rich_text: toRichText(appearance.link.borderColor) },
-            'link_has_shadow': { rich_text: toRichText(appearance.link.hasShadow) },
 
-            // Propriétés pour les en-têtes
             'header_bg_color': { rich_text: toRichText(appearance.header.backgroundColor) },
             'header_text_color': { rich_text: toRichText(appearance.header.textColor) },
             'header_border_radius': { rich_text: toRichText(appearance.header.borderRadius) },
             'header_border_width': { rich_text: toRichText(appearance.header.borderWidth) },
             'header_border_color': { rich_text: toRichText(appearance.header.borderColor) },
-            'header_has_shadow': { rich_text: toRichText(appearance.header.hasShadow) },
 
             'seo_title': { rich_text: toRichText(seo.title) },
             'seo_description': { rich_text: toRichText(seo.description) },
