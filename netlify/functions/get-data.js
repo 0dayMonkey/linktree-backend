@@ -1,10 +1,9 @@
 const { Client } = require("@notionhq/client");
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-// NOUVEAU : Liste des domaines autorisés à faire des requêtes
 const ALLOWED_ORIGINS = [
   'https://harib-naim.fr',
-  'null', // Pour les tests en local (file://)
+  'null',
 ];
 
 const getHeaders = (event) => {
@@ -39,10 +38,11 @@ exports.handler = async function (event) {
   }
 
   try {
-    const [profileDb, socialsDb, linksDb] = await Promise.all([
+    const [profileDb, socialsDb, linksDb, songsDb] = await Promise.all([
       notion.databases.query({ database_id: process.env.NOTION_PROFILE_DB_ID }),
       notion.databases.query({ database_id: process.env.NOTION_SOCIALS_DB_ID }),
       notion.databases.query({ database_id: process.env.NOTION_LINKS_DB_ID }),
+      notion.databases.query({ database_id: process.env.NOTION_SONGS_DB_ID }),
     ]);
 
     if (profileDb.results.length === 0) {
@@ -101,6 +101,15 @@ exports.handler = async function (event) {
         title: getTitle(item.properties.Title),
         url: getUrl(item.properties.URL),
         thumbnailUrl: getPlainText(item.properties['Thumbnail URL']),
+        order: getNumber(item.properties.Order)
+      })).sort((a, b) => a.order - b.order),
+      songs: songsDb.results.map(item => ({
+        pageId: item.id,
+        songId: getPlainText(item.properties.SongID),
+        title: getTitle(item.properties.Title),
+        artist: getPlainText(item.properties.Artist),
+        albumArtUrl: getUrl(item.properties.AlbumArtURL),
+        spotifyUrl: getUrl(item.properties.SpotifyURL),
         order: getNumber(item.properties.Order)
       })).sort((a, b) => a.order - b.order),
     };

@@ -1,10 +1,9 @@
 const { Client } = require("@notionhq/client");
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-// NOUVEAU : Liste des domaines autorisés à faire des requêtes
 const ALLOWED_ORIGINS = [
   'https://harib-naim.fr',
-  'null', // Pour les tests en local (file://)
+  'null',
 ];
 
 const getHeaders = (event) => {
@@ -66,24 +65,41 @@ const updateProfilePage = (pageId, data) => {
     });
 };
 
-const syncItems = async (dbId, items, existingPages, isSocial = false) => {
+const syncItems = async (dbId, items, existingPages, type) => {
     const operations = [];
-    const adminItemIds = new Set(items.map(i => i.id));
+    const adminItemIds = new Set(items.map(i => i.id || i.songId));
     
     for (const [index, item] of items.entries()) {
-        const properties = { 'id': { number: item.id }, 'Order': { number: index } };
-        
-        if (isSocial) {
+        const properties = { 'Order': { number: index } };
+        let itemId;
+
+        if (type === 'social') {
+            properties.id = { number: item.id };
             properties.Network = { title: toTitle(item.network) };
             properties.URL = { url: item.url || null };
-        } else {
+            itemId = item.id;
+        } else if (type === 'link') {
+            properties.id = { number: item.id };
             properties.Title = { title: toTitle(item.title) };
             properties.type = { select: { name: item.type || "link" } };
             properties.URL = { url: item.url || null };
             properties['Thumbnail URL'] = { rich_text: toRichText(item.thumbnailUrl) };
+            itemId = item.id;
+        } else if (type === 'song') {
+            properties.SongID = { rich_text: toRichText(item.songId) };
+            properties.Title = { title: toTitle(item.title) };
+            properties.Artist = { rich_text: toRichText(item.artist) };
+            properties.AlbumArtURL = { url: item.albumArtUrl || null };
+            properties.SpotifyURL = { url: item.spotifyUrl || null };
+            itemId = item.songId;
         }
 
-        const existingPage = existingPages.find(p => p.properties.id.number === item.id);
+        const existingPage = existingPages.find(p => {
+            const pageIdProp = type === 'song' ? 'SongID' : 'id';
+            const pageIdValue = type === 'song' ? getPlainText(p.properties[pageIdProp]) : getNumber(p.properties[pageIdProp]);
+            return pageIdValue === itemId;
+        });
+
         if (existingPage) {
             operations.push(notion.pages.update({ page_id: existingPage.id, properties }));
         } else {
@@ -91,7 +107,12 @@ const syncItems = async (dbId, items, existingPages, isSocial = false) => {
         }
     }
 
-    const pagesToDelete = existingPages.filter(p => !adminItemIds.has(p.properties.id.number));
+    const pagesToDelete = existingPages.filter(p => {
+        const pageIdProp = type === 'song' ? 'SongID' : 'id';
+        const pageIdValue = type === 'song' ? getPlainText(p.properties[pageIdProp]) : getNumber(p.properties[pageIdProp]);
+        return !adminItemIds.has(pageIdValue);
+    });
+
     for (const page of pagesToDelete) {
         operations.push(notion.pages.update({ page_id: page.id, archived: true }));
     }
@@ -111,15 +132,17 @@ exports.handler = async function (event) {
     if (secret !== process.env.UPDATE_SECRET_KEY) return { statusCode: 401, headers, body: 'Non autorisé' };
     if (!data) throw new Error("L'objet de données est manquant.");
 
-    const [existingLinks, existingSocials] = await Promise.all([
+    const [existingLinks, existingSocials, existingSongs] = await Promise.all([
         notion.databases.query({ database_id: process.env.NOTION_LINKS_DB_ID }),
-        notion.databases.query({ database_id: process.env.NOTION_SOCIALS_DB_ID })
+        notion.databases.query({ database_id: process.env.NOTION_SOCIALS_DB_ID }),
+        notion.databases.query({ database_id: process.env.NOTION_SONGS_DB_ID }),
     ]);
 
     await Promise.all([
         updateProfilePage(data.profilePageId, data),
-        syncItems(process.env.NOTION_LINKS_DB_ID, data.links || [], existingLinks.results, false),
-        syncItems(process.env.NOTION_SOCIALS_DB_ID, data.socials || [], existingSocials.results, true)
+        syncItems(process.env.NOTION_LINKS_DB_ID, data.links || [], existingLinks.results, 'link'),
+        syncItems(process.env.NOTION_SOCIALS_DB_ID, data.socials || [], existingSocials.results, 'social'),
+        syncItems(process.env.NOTION_SONGS_DB_ID, data.songs || [], existingSongs.results, 'song'),
     ]);
 
     return {
