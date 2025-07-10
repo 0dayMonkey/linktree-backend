@@ -5,6 +5,9 @@ const headers = {
   'Access-Control-Allow-Origin': '*', 
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
 };
 
 // --- CORRECTION CLÉ : Reconstitution du texte long ---
@@ -44,7 +47,9 @@ exports.handler = async function (event) {
       },
       appearance: {
         fontFamily: getPlainText(profileProps.font_family) || "'Inter', sans-serif",
-        textColor: getPlainText(profileProps.text_color) || "#000000",
+        textColor: getPlainText(profileProps.text_color) || "#121212",
+        titleColor: getPlainText(profileProps.profile_title_color),
+        descriptionColor: getPlainText(profileProps.profile_description_color),
         background: {
           type: getSelect(profileProps.background_type) || "solid",
           value: getPlainText(profileProps.background_value) || "#FFFFFF",
