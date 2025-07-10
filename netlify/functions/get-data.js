@@ -49,9 +49,18 @@ exports.handler = async function (event) {
       throw new Error("La base de données 'Profile & Appearance' dans Notion est vide.");
     }
     const profileProps = profileDb.results[0].properties;
+
+    let sectionOrder;
+    try {
+        sectionOrder = JSON.parse(getPlainText(profileProps.section_order));
+        if (!Array.isArray(sectionOrder)) throw new Error();
+    } catch(e) {
+        sectionOrder = ['socials', 'songs', 'links'];
+    }
     
     const formattedData = {
       profilePageId: profileDb.results[0].id,
+      sectionOrder, // Ajout de l'ordre des sections
       profile: {
         title: getPlainText(profileProps.profile_title),
         description: getPlainText(profileProps.profile_description),

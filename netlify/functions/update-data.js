@@ -17,7 +17,6 @@ const getHeaders = (event) => {
   return headers;
 };
 
-
 const toRichText = (content) => {
     if (content === null || content === undefined) return [];
     const strContent = String(content);
@@ -31,9 +30,12 @@ const toRichText = (content) => {
 
 const toTitle = (content) => [{ text: { content: content || "" } }];
 
+// CORRECTION : La fonction manquante est maintenant définie ici.
+const getNumber = (property) => property?.number || 0;
+
 const updateProfilePage = (pageId, data) => {
     if (!pageId) throw new Error("L'ID de la page de profil est manquant.");
-    const { profile, appearance, seo } = data;
+    const { profile, appearance, seo, sectionOrder } = data;
     
     return notion.pages.update({
         page_id: pageId,
@@ -61,6 +63,8 @@ const updateProfilePage = (pageId, data) => {
             'seo_description': { rich_text: toRichText(seo.description) },
             'seo_faviconUrl': { rich_text: toRichText(seo.faviconUrl) },
             'picture_layout': { select: { name: appearance.pictureLayout || "circle" } },
+            // NOUVEAU : Sauvegarde de l'ordre des sections
+            'section_order': { rich_text: toRichText(JSON.stringify(sectionOrder || ['socials', 'songs', 'links'])) },
         }
     });
 };
@@ -97,7 +101,7 @@ const syncItems = async (dbId, items, existingPages, type) => {
         const existingPage = existingPages.find(p => {
             const pageIdProp = type === 'song' ? 'SongID' : 'id';
             const pageIdValue = type === 'song' ? getPlainText(p.properties[pageIdProp]) : getNumber(p.properties[pageIdProp]);
-            return pageIdValue === itemId;
+            return String(pageIdValue) === String(itemId);
         });
 
         if (existingPage) {
