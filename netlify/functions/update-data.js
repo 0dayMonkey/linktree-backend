@@ -7,13 +7,13 @@ const headers = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// --- CORRECTION CLÉ : Découpage du texte long ---
 const toRichText = (content) => {
-    if (!content) return [];
+    if (content === null || content === undefined) return [];
+    const strContent = String(content);
     const maxLength = 2000;
     const chunks = [];
-    for (let i = 0; i < content.length; i += maxLength) {
-        chunks.push({ text: { content: content.substring(i, i + maxLength) } });
+    for (let i = 0; i < strContent.length; i += maxLength) {
+        chunks.push({ text: { content: strContent.substring(i, i + maxLength) } });
     }
     return chunks;
 };
@@ -43,8 +43,23 @@ const updateProfilePage = (pageId, data) => {
             'profile_description_color': { rich_text: toRichText(appearance.descriptionColor) },
             'background_type': { select: { name: appearance.background.type || "solid" } },
             'background_value': { rich_text: toRichText(backgroundValue) },
-            'button_bg_color': { rich_text: toRichText(appearance.button.backgroundColor) },
-            'button_text_color': { rich_text: toRichText(appearance.button.textColor) },
+            
+            // Propriétés pour les liens
+            'link_bg_color': { rich_text: toRichText(appearance.link.backgroundColor) },
+            'link_text_color': { rich_text: toRichText(appearance.link.textColor) },
+            'link_border_radius': { rich_text: toRichText(appearance.link.borderRadius) },
+            'link_border_width': { rich_text: toRichText(appearance.link.borderWidth) },
+            'link_border_color': { rich_text: toRichText(appearance.link.borderColor) },
+            'link_has_shadow': { rich_text: toRichText(appearance.link.hasShadow) },
+
+            // Propriétés pour les en-têtes
+            'header_bg_color': { rich_text: toRichText(appearance.header.backgroundColor) },
+            'header_text_color': { rich_text: toRichText(appearance.header.textColor) },
+            'header_border_radius': { rich_text: toRichText(appearance.header.borderRadius) },
+            'header_border_width': { rich_text: toRichText(appearance.header.borderWidth) },
+            'header_border_color': { rich_text: toRichText(appearance.header.borderColor) },
+            'header_has_shadow': { rich_text: toRichText(appearance.header.hasShadow) },
+
             'seo_title': { rich_text: toRichText(seo.title) },
             'seo_description': { rich_text: toRichText(seo.description) },
             'seo_faviconUrl': { rich_text: toRichText(seo.faviconUrl) },

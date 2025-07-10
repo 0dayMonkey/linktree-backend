@@ -10,7 +10,6 @@ const headers = {
   'Expires': '0',
 };
 
-// --- CORRECTION CLÉ : Reconstitution du texte long ---
 const getPlainText = (property) => {
     if (!property || !property.rich_text) return "";
     return property.rich_text.map(t => t.plain_text).join('');
@@ -54,11 +53,23 @@ exports.handler = async function (event) {
           type: getSelect(profileProps.background_type) || "solid",
           value: getPlainText(profileProps.background_value) || "#FFFFFF",
         },
-        button: {
-          backgroundColor: getPlainText(profileProps.button_bg_color) || "#FFFFFF",
-          textColor: getPlainText(profileProps.button_text_color) || "#000000",
-          borderRadius: '8px',
-          hasShadow: true
+        // ANCIEN "button" devient "link"
+        link: {
+          backgroundColor: getPlainText(profileProps.link_bg_color) || "#FFFFFF",
+          textColor: getPlainText(profileProps.link_text_color) || "#000000",
+          borderRadius: getPlainText(profileProps.link_border_radius) || '8px',
+          borderWidth: getPlainText(profileProps.link_border_width) || '0px',
+          borderColor: getPlainText(profileProps.link_border_color) || '#000000',
+          hasShadow: (getPlainText(profileProps.link_has_shadow) || "true") === "true",
+        },
+        // NOUVELLE section pour les en-têtes
+        header: {
+            backgroundColor: getPlainText(profileProps.header_bg_color) || "transparent",
+            textColor: getPlainText(profileProps.header_text_color) || "#121212",
+            borderRadius: getPlainText(profileProps.header_border_radius) || '0px',
+            borderWidth: getPlainText(profileProps.header_border_width) || '0px',
+            borderColor: getPlainText(profileProps.header_border_color) || '#000000',
+            hasShadow: (getPlainText(profileProps.header_has_shadow) || "false") === "true",
         },
         pictureLayout: getSelect(profileProps.picture_layout) || "circle",
       },
