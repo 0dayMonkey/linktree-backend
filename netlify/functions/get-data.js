@@ -10,18 +10,6 @@ const headers = {
   'Expires': '0',
 };
 
-// NOUVELLE FONCTION : Réassemble le texte depuis plusieurs propriétés
-const getCombinedPlainText = (properties, baseName, numParts = 3) => {
-    let combined = "";
-    for (let i = 0; i < numParts; i++) {
-        const propName = i === 0 ? baseName : `${baseName}_comp${i}`;
-        if (properties[propName] && properties[propName].rich_text) {
-            combined += properties[propName].rich_text.map(t => t.plain_text).join('');
-        }
-    }
-    return combined;
-};
-
 const getPlainText = (property) => {
     if (!property || !property.rich_text) return "";
     return property.rich_text.map(t => t.plain_text).join('');
@@ -54,7 +42,7 @@ exports.handler = async function (event) {
       profile: {
         title: getPlainText(profileProps.profile_title),
         description: getPlainText(profileProps.profile_description),
-        pictureUrl: getCombinedPlainText(profileProps, 'picture_url'),
+        pictureUrl: getPlainText(profileProps.picture_url),
       },
       appearance: {
         fontFamily: getPlainText(profileProps.font_family) || "'Inter', sans-serif",
@@ -63,7 +51,7 @@ exports.handler = async function (event) {
         descriptionColor: getPlainText(profileProps.profile_description_color),
         background: {
           type: getSelect(profileProps.background_type) || "solid",
-          value: getCombinedPlainText(profileProps, 'background_value'),
+          value: getPlainText(profileProps.background_value),
         },
         link: {
           backgroundColor: getPlainText(profileProps.link_bg_color) || "#FFFFFF",
@@ -84,7 +72,7 @@ exports.handler = async function (event) {
       seo: { 
         title: getPlainText(profileProps.seo_title), 
         description: getPlainText(profileProps.seo_description), 
-        faviconUrl: getCombinedPlainText(profileProps, 'seo_faviconUrl') 
+        faviconUrl: getPlainText(profileProps.seo_faviconUrl) 
       },
       socials: socialsDb.results.map(item => ({
         pageId: item.id,
@@ -99,7 +87,7 @@ exports.handler = async function (event) {
         type: getSelect(item.properties.type),
         title: getTitle(item.properties.Title),
         url: getUrl(item.properties.URL),
-        thumbnailUrl: getCombinedPlainText(item.properties, 'Thumbnail URL'),
+        thumbnailUrl: getPlainText(item.properties['Thumbnail URL']),
         order: getNumber(item.properties.Order)
       })).sort((a, b) => a.order - b.order),
     };
