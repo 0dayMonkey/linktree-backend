@@ -51,6 +51,7 @@ const updateProfilePage = (pageId, data) => {
             'picture_url': { rich_text: toRichText(profile.pictureUrl) },
             'font_family': { rich_text: toRichText(appearance.fontFamily) },
             'text_color': { rich_text: toRichText(appearance.textColor) },
+            'social_icons_color': { rich_text: toRichText(appearance.socialIconsColor) },
             'profile_title_color': { rich_text: toRichText(appearance.titleColor) },
             'profile_description_color': { rich_text: toRichText(appearance.descriptionColor) },
             'background_type': { select: { name: appearance.background.type || "solid" } },

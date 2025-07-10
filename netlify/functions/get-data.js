@@ -69,6 +69,7 @@ exports.handler = async function (event) {
       appearance: {
         fontFamily: getPlainText(profileProps.font_family) || "'Inter', sans-serif",
         textColor: getPlainText(profileProps.text_color) || "#121212",
+        socialIconsColor: getPlainText(profileProps.social_icons_color) || getPlainText(profileProps.text_color) || "#121212",
         titleColor: getPlainText(profileProps.profile_title_color),
         descriptionColor: getPlainText(profileProps.profile_description_color),
         background: {
