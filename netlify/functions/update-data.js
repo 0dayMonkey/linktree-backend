@@ -46,6 +46,7 @@ const updateProfilePage = (pageId, data) => {
             'seo_title': { rich_text: toRichText(seo.title) },
             'seo_description': { rich_text: toRichText(seo.description) },
             'seo_faviconUrl': { rich_text: toRichText(seo.faviconUrl) },
+            'picture_layout': { select: { name: appearance.pictureLayout || "circle" } },
         }
     });
 };

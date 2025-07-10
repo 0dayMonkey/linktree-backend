@@ -54,7 +54,8 @@ exports.handler = async function (event) {
           textColor: getPlainText(profileProps.button_text_color) || "#000000",
           borderRadius: '8px',
           hasShadow: true
-        }
+        },
+        pictureLayout: getSelect(profileProps.picture_layout) || "circle",
       },
       seo: { 
         title: getPlainText(profileProps.seo_title), 
