@@ -20,23 +20,29 @@ const toRichText = (content) => {
 
 const toTitle = (content) => [{ text: { content: content || "" } }];
 
+const isValidImageUrl = (url) => {
+    if (!url) return null;
+    const sUrl = String(url);
+    // Accepte les URL http/https et les données Base64
+    if (sUrl.startsWith('http') || sUrl.startsWith('data:image')) {
+        return sUrl;
+    }
+    return null;
+};
+
 const updateProfilePage = (pageId, data) => {
     if (!pageId) throw new Error("L'ID de la page de profil est manquant.");
     const { profile, appearance, seo } = data;
-    const backgroundValue = appearance.background.type === 'gradient' 
-        ? appearance.background.value 
-        : (appearance.background.value || "").startsWith('data:image') 
-            ? appearance.background.value 
-            : Array.isArray(appearance.background.value) 
-                ? appearance.background.value.join(',') 
-                : appearance.background.value;
-    
+
+    const backgroundValue = isValidImageUrl(appearance.background.value) ||
+        (appearance.background.type === 'gradient' ? appearance.background.value : appearance.background.value);
+
     return notion.pages.update({
         page_id: pageId,
         properties: {
             'profile_title': { rich_text: toRichText(profile.title) },
             'profile_description': { rich_text: toRichText(profile.description) },
-            'picture_url': { rich_text: toRichText(profile.pictureUrl) },
+            'picture_url': { rich_text: toRichText(isValidImageUrl(profile.pictureUrl)) },
             'font_family': { rich_text: toRichText(appearance.fontFamily) },
             'text_color': { rich_text: toRichText(appearance.textColor) },
             'profile_title_color': { rich_text: toRichText(appearance.titleColor) },
@@ -58,7 +64,7 @@ const updateProfilePage = (pageId, data) => {
 
             'seo_title': { rich_text: toRichText(seo.title) },
             'seo_description': { rich_text: toRichText(seo.description) },
-            'seo_faviconUrl': { rich_text: toRichText(seo.faviconUrl) },
+            'seo_faviconUrl': { rich_text: toRichText(isValidImageUrl(seo.faviconUrl)) },
             'picture_layout': { select: { name: appearance.pictureLayout || "circle" } },
         }
     });
@@ -78,7 +84,7 @@ const syncItems = async (dbId, items, existingPages, isSocial = false) => {
             properties.Title = { title: toTitle(item.title) };
             properties.type = { select: { name: item.type || "link" } };
             properties.URL = { url: item.url || null };
-            properties['Thumbnail URL'] = { rich_text: toRichText(item.thumbnailUrl) };
+            properties['Thumbnail URL'] = { rich_text: toRichText(isValidImageUrl(item.thumbnailUrl)) };
         }
 
         const existingPage = existingPages.find(p => p.properties.id.number === item.id);
